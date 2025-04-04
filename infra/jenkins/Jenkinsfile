@@ -1,0 +1,55 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'app-java-21-teste'
+        IMAGE_TAG = '1.0.0'
+        KUBECONFIG = credentials('kubeconfig-secret-id')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/gamartins01311/app-java-21-teste.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh './mvnw clean package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t $IMAGE_NAME:$IMAGE_TAG ."
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $IMAGE_NAME:$IMAGE_TAG
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to K3s') {
+            steps {
+                sh '''
+                    mkdir -p ~/.kube
+                    echo "$KUBECONFIG" > ~/.kube/config
+
+                    kubectl apply -f infra/manifests/deployment.yaml
+                    kubectl apply -f infra/manifests/service.yaml
+                    kubectl apply -f infra/manifests/gateway.yaml
+                    kubectl apply -f infra/manifests/virtualservice.yaml
+                    kubectl apply -f infra/manifests/destinationrule.yaml
+                '''
+            }
+        }
+    }
+}

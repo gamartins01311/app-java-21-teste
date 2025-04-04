@@ -1,0 +1,10 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: app-teste-21
+  namespace: projetos
+spec:
+  host: app-teste-21
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN

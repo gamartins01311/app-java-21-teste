@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-teste-21
+  namespace: projetos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-teste-21
+  template:
+    metadata:
+      labels:
+        app: app-teste-21
+    spec:
+      containers:
+        - name: app
+          image: app-java-21-teste:1.0.0
+          ports:
+            - containerPort: 8080
