@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/gamartins01311/app-java-21-teste.git'
+                git url: 'git@github.com:gamartins01311/app-java-21-teste.git', credentialsId: 'github-ssh-credentials-id'
             }
         }
 
