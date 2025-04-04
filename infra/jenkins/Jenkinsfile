@@ -4,13 +4,20 @@ pipeline {
     environment {
         IMAGE_NAME = 'app-java-21-teste'
         IMAGE_TAG = '1.0.0'
-        KUBECONFIG = credentials('kubeconfig-secret-id')
+        KUBECONFIG = credentials('kubeconfig-k3')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: 'git@github.com:gamartins01311/app-java-21-teste.git', credentialsId: 'github-ssh-credentials-id'
+                withCredentials([sshUserPrivateKey(credentialsId: 'github-ssh-credentials-id', keyFileVariable: 'SSH_KEY')]) {
+                    sh """
+                        mkdir -p ~/.ssh
+                        echo "$SSH_KEY" > ~/.ssh/id_rsa
+                        chmod 600 ~/.ssh/id_rsa
+                        git clone git@github.com:gamartins01311/app-java-21-teste.git
+                    """
+                }
             }
         }
 
@@ -39,10 +46,11 @@ pipeline {
 
         stage('Deploy to K3s') {
             steps {
+                script {
+                    sh 'mkdir -p ~/.kube'
+                    writeFile file: '~/.kube/config', text: credentials('kubeconfig-k3')
+                }
                 sh '''
-                    mkdir -p ~/.kube
-                    echo "$KUBECONFIG" > ~/.kube/config
-
                     kubectl apply -f infra/manifests/deployment.yaml
                     kubectl apply -f infra/manifests/service.yaml
                     kubectl apply -f infra/manifests/gateway.yaml
