@@ -5,25 +5,32 @@ pipeline {
         IMAGE_NAME = 'app-java-21-teste'
         IMAGE_TAG = '1.0.0'
         KUBECONFIG = credentials('kubeconfig-k3')
+        JAVA_HOME = tool name: 'JDK 21', type: 'JDK'  // Defina o JDK 21 aqui
+        PATH = "$JAVA_HOME/bin:$PATH"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'github-ssh-credentials-id', keyFileVariable: 'SSH_KEY')]) {
-                    sh """
-                        mkdir -p ~/.ssh
-                        echo "$SSH_KEY" > ~/.ssh/id_rsa
-                        chmod 600 ~/.ssh/id_rsa
-                        git clone git@github.com:gamartins01311/app-java-21-teste.git
-                    """
+                script {
+                    if (fileExists('app-java-21-teste')) {
+                        deleteDir()
+                    }
+                }
+                withCredentials([usernamePassword(credentialsId: 'github-token-credentials-id', usernameVariable: 'GITHUB_USER', passwordVariable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        git clone https://$GITHUB_USER:$GITHUB_TOKEN@github.com/gamartins01311/app-java-21-teste.git
+                    '''
                 }
             }
         }
 
         stage('Build') {
             steps {
-                sh './mvnw clean package -DskipTests'
+                dir('app-java-21-teste') {
+                    sh 'chmod +x ./mvnw'  // Adiciona permissão de execução
+                    sh './mvnw clean package -DskipTests'  // Executa com Maven Wrapper
+                }
             }
         }
 
@@ -57,6 +64,16 @@ pipeline {
                     kubectl apply -f infra/manifests/virtualservice.yaml
                     kubectl apply -f infra/manifests/destinationrule.yaml
                 '''
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                script {
+                    if (fileExists('app-java-21-teste')) {
+                        deleteDir()
+                    }
+                }
             }
         }
     }
